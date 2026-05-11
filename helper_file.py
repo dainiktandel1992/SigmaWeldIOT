@@ -3,6 +3,7 @@ import uos
 import urequests
 import utime
 import os
+import ujson
 
 
 def check_if_file_exists(filepath):
@@ -213,3 +214,112 @@ def downloadFile(_conf):
         else:
             print("File Exists", file_path)
         utime.sleep(1)
+
+
+
+
+def ota_update11(version):
+    url = "https://sigmaweld-ota-update.s3.us-east-1.amazonaws.com/version.json"
+    r = urequests.get(url)
+    data = ujson.loads(r.text)
+    latest_version = data["version"]
+    
+    if latest_version != version:
+        print("New update available")
+        for file in data["files"]:
+            try:
+                gc.collect()
+                print(f"Free memory before download: {gc.mem_free()} bytes")
+                _url = f"https://sigmaweld-ota-update.s3.us-east-1.amazonaws.com/{file}"
+                print(_url)
+                
+                try:
+                    _res = urequests.get(_url, timeout=20)
+                    if _res.status_code == 200:
+                        with open(file, "wb") as _file:
+                            while True:
+                                chunk = _res.raw.read(512)
+                                if not chunk:
+                                    break
+                                _file.write(chunk)
+                    _res.close()
+                except Exception as e:
+                    print(f"An error occurred while downloading {file}: {e}")
+                utime.sleep(2)
+            except Exception as e:
+                print(f"An error occurred: {e}")
+
+        print("Update complete")
+
+
+
+def ota_update(current_version):
+    try:
+        print("Checking OTA version...")
+        version_url = "https://sigmaweld-ota-update.s3.us-east-1.amazonaws.com/version.json"
+        r = urequests.get(version_url)
+        if r.status_code != 200:
+            print("Failed to fetch version file")
+            r.close()
+            return False
+
+        data = ujson.loads(r.text)
+        r.close()
+
+        latest_version = data["version"]
+
+        print("Current Version :", current_version)
+        print("Latest Version  :", latest_version)
+
+        if latest_version == current_version:
+            print("Device already up to date")
+            return False
+
+        print("New update available")
+        files = data["files"]
+        for file in files:
+            try:
+                gc.collect()
+                print("--------------------------------")
+                print("Downloading:", file)
+                print("Free RAM:", gc.mem_free())
+
+                file_url = (
+                    "https://sigmaweld-ota-update.s3.us-east-1.amazonaws.com/"
+                    + file
+                )
+
+                response = urequests.get(file_url, timeout=20)
+                if response.status_code != 200:
+                    print("Failed:", file)
+                    response.close()
+                    continue
+                temp_file = file + ".new"
+                with open(temp_file, "wb") as f:
+                    while True:
+                        chunk = response.raw.read(512)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                response.close()
+                # Replace old file only after successful download
+                try:
+                    uos.remove(file)
+                except:
+                    pass
+
+                uos.rename(temp_file, file)
+                print("Updated:", file)
+                gc.collect()
+                utime.sleep_ms(500)
+
+            except Exception as e:
+                print("File update failed:", file)
+                print("Error:", e)
+
+        print("OTA update complete")
+        return True
+
+    except Exception as e:
+        print("OTA failed:", e)
+        return False

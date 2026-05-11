@@ -88,8 +88,8 @@ class BLEMonitor:
                 break
             utime.sleep(1)
             
-        """# Advertise for max 30 seconds
-        start_time = utime.ticks_ms()
+        # Advertise for max 30 seconds
+        """ start_time = utime.ticks_ms()
         timeout_ms = 15000   # 30 sec
 
         while True:
@@ -109,8 +109,8 @@ class BLEMonitor:
                 self._advertising = False
                 break
 
-            utime.sleep(1) """
-
+            utime.sleep(1)
+ """
         print("Continue next process...")
 
     
@@ -148,7 +148,7 @@ class BLEMonitor:
 
     def _advertise(self, interval_us=500000):    
         if not self._advertising:
-            print("Starting advertising", self._payload)
+            print("Starting advertising")
             self._advertising = True
             self._ble.gap_advertise(interval_us, adv_data=self._payload)
 

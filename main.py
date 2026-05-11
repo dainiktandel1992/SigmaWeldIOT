@@ -5,9 +5,10 @@ from micropython import const
 # from helper_storage import DataLogger, SDManager
 # from helper_core import CoreLogger
 # from helper_mqtt import MQTTManager
-# from helper_wifi import WiFiManager
-# from helper_config import refresh_conf
+from helper_wifi import WiFiManager
+from helper_config import refresh_conf
 from helper_ble import BLEMonitor
+from helper_file import ota_update
 from helper_var import (
     _min_current,
     _interval,
@@ -20,7 +21,7 @@ from helper_var import (
 )
 
 # from helper_modules import update_oled_display_statement
-
+CURRENT_VERSION = "1.0.2"
 
 # =========================
 # Main Logger Function
@@ -38,6 +39,22 @@ def log_sensor_data(interval_ms=900):
         buffer_size=5
     ) """
 
+    wifi_manager = WiFiManager()
+    if wifi_manager.is_connected():
+        print("Wifi Connect.")
+        # refresh_conf()
+    else:
+        print("Wifi No Found.")
+        utime.sleep_ms(1000)
+
+    print("Checking for OTA updates...")
+    if ota_update(CURRENT_VERSION):
+        print("OTA update successful. Restarting device...")
+        utime.sleep_ms(2000)
+        # machine.reset()  # Uncomment this line to enable automatic restart after OTA update
+    else:
+        print("No OTA update available or update failed.")
+        
     # =========================
     # START DELAY
     # =========================
