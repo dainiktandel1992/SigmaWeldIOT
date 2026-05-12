@@ -22,7 +22,7 @@ from helper_var import (
 )
 
 # from helper_modules import update_oled_display_statement
-CURRENT_VERSION = "1.0.1"
+# CURRENT_VERSION = "1.0.1"
 
 # =========================
 # Main Logger Function
