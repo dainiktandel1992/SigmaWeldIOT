@@ -21,6 +21,7 @@
 
 __version__ = '2.1.0'
 
+import gc
 import os
 import urequests
 import json
@@ -293,6 +294,7 @@ def pull_git_tree(user, repository, branch='main', token=''):
     """Fetch the full recursive tree from GitHub API."""
     url = '%s/%s/%s/git/trees/%s?recursive=1' % (_GITHUB_API, user, repository, branch)
     r = urequests.get(url, headers=_headers(token))
+    print('GitHub API response status:', r.status_code)
     data = json.loads(r.content.decode('utf-8'))
     r.close()
     if 'tree' not in data:

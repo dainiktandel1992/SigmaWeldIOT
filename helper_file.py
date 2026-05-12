@@ -327,17 +327,27 @@ def ota_update______(current_version):
 
 
 
-def ota_update(current_version):
+def ota_update():
     try:
+        gc.collect()
+        print("Free RAM before OTA:", gc.mem_free())
         print("Checking OTA version...")
+
         changes = ugit.check_for_updates(isconnected=True)
+
+        gc.collect()
+        print("Free RAM after check:", gc.mem_free())
         print(changes)
 
         if changes['new'] or changes['changed']:
+            gc.collect()
             ugit.pull_all(isconnected=True)
+            gc.collect()
+            print("OTA update complete")
+            return True
 
-        print("OTA update complete")
-        return True
+        print("No updates available")
+        return False
 
     except Exception as e:
         print("OTA failed:", e)

@@ -49,7 +49,7 @@ def log_sensor_data(interval_ms=900):
         utime.sleep_ms(1000)
 
     # print("Checking for OTA updates...")
-    if ota_update(CURRENT_VERSION):
+    if ota_update():
         print("OTA update successful. Restarting device...")
         utime.sleep_ms(2000)
         machine.reset()  # Uncomment this line to enable automatic restart after OTA update
