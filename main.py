@@ -1,5 +1,6 @@
 import gc
 import utime
+import machine
 from micropython import const
 
 # from helper_storage import DataLogger, SDManager
@@ -21,7 +22,7 @@ from helper_var import (
 )
 
 # from helper_modules import update_oled_display_statement
-CURRENT_VERSION = "1.0.2"
+CURRENT_VERSION = "1.0.1"
 
 # =========================
 # Main Logger Function
@@ -47,11 +48,11 @@ def log_sensor_data(interval_ms=900):
         print("Wifi No Found.")
         utime.sleep_ms(1000)
 
-    print("Checking for OTA updates...")
+    # print("Checking for OTA updates...")
     if ota_update(CURRENT_VERSION):
         print("OTA update successful. Restarting device...")
         utime.sleep_ms(2000)
-        # machine.reset()  # Uncomment this line to enable automatic restart after OTA update
+        machine.reset()  # Uncomment this line to enable automatic restart after OTA update
     else:
         print("No OTA update available or update failed.")
         
@@ -59,7 +60,7 @@ def log_sensor_data(interval_ms=900):
     # START DELAY
     # =========================
     # update_oled_display_statement("BLE Config Mode")
-    ble_monitor = BLEMonitor(name=_device_id)
+    # ble_monitor = BLEMonitor(name=_device_id)
     for i in range(10):
         print(f"Start in {10 - i}.")
         # update_oled_display_statement(f"Start in {10 - i}.")

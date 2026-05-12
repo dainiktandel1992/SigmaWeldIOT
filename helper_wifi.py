@@ -1,5 +1,6 @@
 import network
 import utime
+import gc
 from helper_var import _ssid, _psk
 
 _wifi_ssid = _ssid
@@ -12,24 +13,64 @@ _poll_interval_ms    =    250
 class WiFiManager:
     def __init__(self):
         self._wlan = network.WLAN(network.STA_IF)
-        self._wlan.active(True)
+        self._reset_wifi()
+        # self._wlan.active(True)
         print("WiFi: connecting to '{}'...".format(_wifi_ssid))
         self._connect(timeout_ms=_connect_timeout_ms)
+
+    def _reset_wifi(self):
+        try:
+            self._wlan.disconnect()
+        except:
+            pass
+
+        try:
+            self._wlan.active(False)
+        except:
+            pass
+
+        utime.sleep_ms(1000)
+
+        self._wlan.active(True)
+
+        # Disable power save (improves ESP32 stability)
+        try:
+            self._wlan.config(pm=0xa11140)
+        except:
+            pass
+
+        utime.sleep_ms(1000)
+
+        gc.collect()
+
 
     def _connect(self, timeout_ms: int) -> bool:
         if self._wlan.isconnected():
             return True
 
+        status = self._wlan.status()
+        # print("WiFi status before connect:", status)
+
         try:
             self._wlan.connect(_wifi_ssid, _wifi_password)
         except Exception as e:
             print("WiFi: connect() error:", e)
+            self._reset_wifi()
             return False
 
-        deadline = utime.ticks_ms() + timeout_ms
+        start = utime.ticks_ms()
+
         while not self._wlan.isconnected():
-            if utime.ticks_diff(deadline, utime.ticks_ms()) <= 0:
+            status = self._wlan.status()
+            # negative status = failed
+            if status < 0:
+                print("WiFi failed with status:", status)
                 return False
+
+            if utime.ticks_diff(utime.ticks_ms(), start) > timeout_ms:
+                print("WiFi connection timeout")
+                return False
+
             utime.sleep_ms(_poll_interval_ms)
 
         ip, _, _, _ = self._wlan.ifconfig()
@@ -41,14 +82,14 @@ class WiFiManager:
 
     def reconnect(self) -> bool:
         print("WiFi: link lost — attempting reconnect to '{}'...".format(_wifi_ssid))
-        try:
+        self._reset_wifi()
+        """ try:
             self._wlan.disconnect()
         except Exception:
             pass
-        utime.sleep_ms(500)
+        utime.sleep_ms(500) """
 
-        success = self._connect(timeout_ms=_reconnect_timeout_ms
-        )
+        success = self._connect(timeout_ms=_reconnect_timeout_ms)
         if not success:
             print("WiFi: reconnect failed — SD logging continues, will retry next interval")
         return success

@@ -4,6 +4,7 @@ import urequests
 import utime
 import os
 import ujson
+import ugit
 
 
 def check_if_file_exists(filepath):
@@ -253,7 +254,7 @@ def ota_update11(version):
 
 
 
-def ota_update(current_version):
+def ota_update______(current_version):
     try:
         print("Checking OTA version...")
         version_url = "https://sigmaweld-ota-update.s3.us-east-1.amazonaws.com/version.json"
@@ -323,3 +324,23 @@ def ota_update(current_version):
     except Exception as e:
         print("OTA failed:", e)
         return False
+
+
+
+def ota_update(current_version):
+    try:
+        print("Checking OTA version...")
+        changes = ugit.check_for_updates(isconnected=True)
+        print(changes)
+
+        if changes['new'] or changes['changed']:
+            ugit.pull_all(isconnected=True)
+
+        print("OTA update complete")
+        return True
+
+    except Exception as e:
+        print("OTA failed:", e)
+        return False
+
+
