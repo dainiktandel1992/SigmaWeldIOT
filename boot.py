@@ -1,4 +1,4 @@
-import gc
+""" import gc
 import utime
 from helper_storage import (DataLogger, SDManager)
 from helper_core import CoreLogger
@@ -59,3 +59,4 @@ if __name__ == "__main__":
     log_sensor_data(interval_ms = int(_interval))
 
 
+ """
