@@ -119,7 +119,7 @@ def update_connection_file(input_string):
         if new_value == "1":
             # delete_files()
             rename_files()
-            print("Delete files successfully.")
+            print("Reset files successfully.")
         return
     
     
@@ -191,6 +191,7 @@ def delete_files():
 
     return
      
+
 def rename_files():
     files_to_rename = [
         "counter.txt",
@@ -198,30 +199,47 @@ def rename_files():
         "pub_offset.txt",
     ]
 
-    # Delete files
+    # Rename files
     for file_name in files_to_rename:
-
-        """ print("*******************************")
-        print(uos.listdir())
-        print("*******************************") """
-
-        # Check file exists first
-        """ try:
-            uos.stat(file_name)
-        except OSError:
-            print("File not found:", file_name)
-            continue """
-
+        new_file = None
         try:
-
-            
-            name, ext = file_name.rsplit(".", 1)
-            new_file = "{}_{}.{}".format(name, 1, ext)
-            print("Renaming:", file_name, " to ", new_file)
-
             gc.collect()
+            try:
+                f = open(file_name, "rb")
+                f.close()
+            except:
+                print("File not found:", file_name)
+                continue
+            
+            # Get dynamic backup filename
+            print("\nProcessing:", file_name)
 
-            # temp_file = file_name + ".new"
+            name, ext = file_name.rsplit(".", 1)
+            count = 1
+            # new_file = '';
+            while True:
+                backup_name = "{}_{}.{}".format(name, count, ext)
+                
+                gc.collect()
+                # gc.mem_free()
+
+                try:           
+                    f = open(backup_name, "rb")
+                    f.close()
+
+                    count += 1
+                    gc.collect()
+                
+                except Exception as e:
+                    new_file = backup_name
+                    break
+
+
+            # print("Backup file:", new_file)
+
+            gc.collect()          
+            # new_file = "{}_{}.{}".format(name, 1, ext)
+            utime.sleep_ms(200)
             
             with open(file_name, "rb") as src:
                 with open(new_file, "wb") as dst:
@@ -235,23 +253,15 @@ def rename_files():
                         gc.collect()
 
             gc.collect()
-            utime.sleep_ms(200)
+            utime.sleep_ms(100)
 
-            print("Renaming:", file_name, " to ", new_file , " completed")
+            # print("Renaming:", file_name, " to ", new_file , " completed")
             
-            # Recreate empty file
-            try:
-                with open(file_name, "w") as f:
-                    f.write("")
+            with open(file_name, "w") as f:
+                f.write("")
 
-                print("Recreated empty file:", file_name)
-
-            except Exception as e:
-                print("Recreate failed:", e)
-
+            print("Recreated empty file:", file_name)
             gc.collect()
-
-            # print("Deleted:", file_name)
         except Exception as e:
             print("Rename failed:", e)
             try:
@@ -262,6 +272,42 @@ def rename_files():
             gc.collect()
     
     return
+
+
+def get_next_backup_name(file_name):
+    name, ext = file_name.rsplit(".", 1)
+    f = open(file_name, "rb")
+    f.close()
+    gc.collect()
+    print("file open and closed")
+    count = 1
+    while True:
+        backup_name = "{}_{}.{}".format(name, count, ext)
+        print(backup_name)
+        
+        gc.collect()
+        print("Free RAM:", gc.mem_free())
+
+        try:           
+            print("Check file exiest or not : ",backup_name)
+
+            """ f = open(backup_name, "rb")
+            f.close() """
+
+            with open(backup_name, "rb") as f:
+                print("File open")
+                count += 1
+
+            gc.collect()
+            
+            # count += 1
+            print("next counter : ",count)
+           
+        except Exception as e:
+            print(" error :", e)
+            print("File not found:", backup_name)
+            return backup_name
+
 
 
 def upload_file(url, filename):
