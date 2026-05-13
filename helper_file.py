@@ -117,7 +117,9 @@ def update_connection_file(input_string):
 
     if replacement_key == "reset_files":
         if new_value == "1":
-            delete_files()
+            # delete_files()
+            rename_files()
+            print("Delete files successfully.")
         return
     
     
@@ -168,11 +170,99 @@ def delete_files():
     for file_name in files_to_delete:
 
         try:
-            os.remove(file_name)
-            print("Deleted:", file_name)
+            print("Deleting file :", file_name)
+            uos.remove(file_name)
+            print(f"File {file_name} Deleted Successfully:")
         except OSError:
             print("File not found:", file_name)
+
+
+        # Recreate empty file
+        try:
+            with open(file_name, "w") as f:
+                f.write("")
+
+            print("Recreated empty file:", file_name)
+
+        except Exception as e:
+            print("Recreate failed:", e)
+
+        gc.collect()
+
+    return
      
+def rename_files():
+    files_to_rename = [
+        "counter.txt",
+        "published.txt",
+        "pub_offset.txt",
+    ]
+
+    # Delete files
+    for file_name in files_to_rename:
+
+        """ print("*******************************")
+        print(uos.listdir())
+        print("*******************************") """
+
+        # Check file exists first
+        """ try:
+            uos.stat(file_name)
+        except OSError:
+            print("File not found:", file_name)
+            continue """
+
+        try:
+
+            
+            name, ext = file_name.rsplit(".", 1)
+            new_file = "{}_{}.{}".format(name, 1, ext)
+            print("Renaming:", file_name, " to ", new_file)
+
+            gc.collect()
+
+            # temp_file = file_name + ".new"
+            
+            with open(file_name, "rb") as src:
+                with open(new_file, "wb") as dst:
+                    while True:
+                        chunk = src.read(512)
+                        if not chunk:
+                            break
+
+                        dst.write(chunk)
+                        del chunk
+                        gc.collect()
+
+            gc.collect()
+            utime.sleep_ms(200)
+
+            print("Renaming:", file_name, " to ", new_file , " completed")
+            
+            # Recreate empty file
+            try:
+                with open(file_name, "w") as f:
+                    f.write("")
+
+                print("Recreated empty file:", file_name)
+
+            except Exception as e:
+                print("Recreate failed:", e)
+
+            gc.collect()
+
+            # print("Deleted:", file_name)
+        except Exception as e:
+            print("Rename failed:", e)
+            try:
+                uos.remove(new_file)
+            except:
+                pass
+
+            gc.collect()
+    
+    return
+
 
 def upload_file(url, filename):
     try:
@@ -254,11 +344,15 @@ def ota_update11(version):
 
 
 
-def ota_update______(current_version):
+def ota_update(current_version):
     try:
-        print("Checking OTA version...")
+        gc.collect()
+        print("Free RAM before OTA:", gc.mem_free())
         version_url = "https://sigmaweld-ota-update.s3.us-east-1.amazonaws.com/version.json"
-        r = urequests.get(version_url)
+        print("Checking OTA version...", version_url)
+        r = urequests.get(version_url, timeout=20)
+        print("Checking OTA version...", r.status_code)
+
         if r.status_code != 200:
             print("Failed to fetch version file")
             r.close()
@@ -267,12 +361,12 @@ def ota_update______(current_version):
         data = ujson.loads(r.text)
         r.close()
 
-        latest_version = data["version"]
+        # latest_version = data["version"]
 
         print("Current Version :", current_version)
-        print("Latest Version  :", latest_version)
+        print("Latest Version  :", data["version"])
 
-        if latest_version == current_version:
+        if data["version"] == current_version:
             print("Device already up to date")
             return False
 
@@ -327,7 +421,7 @@ def ota_update______(current_version):
 
 
 
-def ota_update():
+def ota_update_ugit():
     try:
         gc.collect()
         print("Free RAM before OTA:", gc.mem_free())

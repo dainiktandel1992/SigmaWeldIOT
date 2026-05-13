@@ -87,7 +87,8 @@ class BLEMonitor:
             if not self._advertising:
                 break
             utime.sleep(1)
-            
+        
+        
         # Advertise for max 30 seconds
         """ start_time = utime.ticks_ms()
         timeout_ms = 15000   # 30 sec
@@ -116,7 +117,7 @@ class BLEMonitor:
     
     
     def _irq(self, event, data):
-        print("_advertising", self._advertising, "disconnet_ble", self._disconnet_ble)
+        # print("_advertising", self._advertising, "disconnet_ble", self._disconnet_ble)
         print("IRQ event:", event)
         if event == _IRQ_CENTRAL_CONNECT:
             conn_handle, _, _ = data

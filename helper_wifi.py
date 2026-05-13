@@ -29,7 +29,7 @@ class WiFiManager:
         except:
             pass
 
-        utime.sleep_ms(1000)
+        utime.sleep_ms(200)
 
         self._wlan.active(True)
 
@@ -39,7 +39,7 @@ class WiFiManager:
         except:
             pass
 
-        utime.sleep_ms(1000)
+        utime.sleep_ms(200)
 
         gc.collect()
 

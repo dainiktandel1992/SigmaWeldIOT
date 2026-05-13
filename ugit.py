@@ -293,6 +293,7 @@ def wificonnect(ssid=None, password=None):
 def pull_git_tree(user, repository, branch='main', token=''):
     """Fetch the full recursive tree from GitHub API."""
     url = '%s/%s/%s/git/trees/%s?recursive=1' % (_GITHUB_API, user, repository, branch)
+    print('Fetching GitHub tree...', url)
     r = urequests.get(url, headers=_headers(token))
     print('GitHub API response status:', r.status_code)
     data = json.loads(r.content.decode('utf-8'))
@@ -455,6 +456,7 @@ def check_for_updates(user=None, repository=None, branch=None, token=None,
 
     All arguments are optional if config.json exists on the device.
     """
+    # print('Checking for updates...')
     c = _resolve_config(user, repository, branch, token, ssid, password, ignore)
     ignore = _ensure_ignore(c['ignore'])
 
@@ -464,10 +466,12 @@ def check_for_updates(user=None, repository=None, branch=None, token=None,
     if not isconnected:
         wificonnect(c['ssid'], c['password'])
 
+    # print('Line 468')
     os.chdir('/')
     git_tree = pull_git_tree(c['user'], c['repository'], c['branch'], c['token'])
     local_tree = _build_internal_tree()
     git_files = set()
+    print('local_tree', local_tree)
 
     new = []
     changed = []
