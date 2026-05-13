@@ -7,7 +7,7 @@ import urandom
 import utime
 
 from helper_file import (
-    update_connection_file,
+    update_file,
 )
 
 _FLAG_READ = const(0x0002)
@@ -56,7 +56,7 @@ class BLEMonitor:
         uui = generate_random_uuid("S-IT")
         self._UART_UUID = ubluetooth.UUID(uui)
         upld = "u=" + uui
-        print("UUID", upld)
+        # print("UUID", upld)
         # update_file1(upld)
         utime.sleep(1)
         self._UART_TX = (
@@ -142,7 +142,7 @@ class BLEMonitor:
             else:
                 if value_handle == self._handle_rx and self._write_callback:
                     self._write_callback(verify)
-                    update_connection_file(verify.decode("utf-8"))
+                    update_file(verify.decode("utf-8"))
 
     def is_connected(self):
         return len(self._connections) > 0

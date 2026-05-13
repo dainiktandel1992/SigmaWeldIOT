@@ -7,65 +7,7 @@ import ujson
 import ugit
 
 
-def check_if_file_exists(filepath):
-    try:
-        with open(filepath, "r"):
-            return True
-    except OSError:
-        return False
-
-
-def validate_file(_conf):
-    firstTest = False
-    secondTest = False
-    with open(_conf) as f:
-        for line in f:
-            if "=" in line:
-                key, value = map(str.strip, line.split("=", 1))
-                if key == "uuid" and value: firstTest = True
-                elif key == "device_id" and value: secondTest = True
-    return firstTest and secondTest
-
-
-def download_file(_tg, _tn, _fn):
-    success = False  # Track whether the download was successful
-    while not success:
-        try:
-            gc.collect()  # Free unused memory
-            print(f"Free memory before download: {gc.mem_free()} bytes")
-            _url = f"https://satellite-tech-temp.s3.amazonaws.com/{_tg}/{_tn}/{_fn}"
-            print(_url)
-            
-            try:
-                _res = urequests.get(_url, timeout=20)
-                if _res.status_code == 200:
-                    with open(f"flash/{_fn}", "wb") as _file:
-                        _file.write(_res.content)
-                    success = True  # Mark success if download completes
-                _res.close()
-            except Exception as e:
-                print(f"An error occurred while downloading {_fn}: {e}")
-            utime.sleep(2)
-        except Exception as e:
-            print(f"An error occurred: {e}")
-
-
-def read_config(file_name):
-    _config = {}
-    with open(file_name) as f:
-        for line in f:
-            if "=" in line:
-                key, value = line.strip().split("=", 1)
-                _config[key.strip()] = value.strip()
-    return _config
-
-
-def read_file(file_name):
-    with open(file_name, "r") as f:
-        return f.read()
-
- 
-def update_connection_file(input_string):
+def update_file(input_string):
     patterns = {
         "wn=": "ssid =",
         "wp=": "psk =",
@@ -105,11 +47,11 @@ def update_connection_file(input_string):
     if replacement_key in numeric_keys:
 
         try:
-            # int for adc_samples
-            if replacement_key == "adc_samples =":
-                new_value = int(new_value)
-            else:
+            # float only for current_offset
+            if replacement_key == "current_offset =":
                 new_value = float(new_value)
+            else:
+                new_value = int(new_value)
 
         except ValueError:
             print("Invalid numeric value")
@@ -117,11 +59,9 @@ def update_connection_file(input_string):
 
     if replacement_key == "reset_files":
         if new_value == "1":
-            # delete_files()
             rename_files()
             print("Reset files successfully.")
         return
-    
     
     if replacement_key == "upload_files":
         if new_value == "1":
@@ -150,7 +90,6 @@ def update_connection_file(input_string):
         with open(file_path, 'w') as file:
             for line in lines:
                 if line.startswith(replacement_key):
-                    # print("Updating :", replacement_key)
                     line = f"{replacement_key} {new_value}\n"
                 file.write(line)
         print(f"Successfully updated file '{file_path}'")
@@ -239,7 +178,7 @@ def rename_files():
 
             gc.collect()          
             # new_file = "{}_{}.{}".format(name, 1, ext)
-            utime.sleep_ms(200)
+            utime.sleep_ms(500)
             
             with open(file_name, "rb") as src:
                 with open(new_file, "wb") as dst:
@@ -274,42 +213,6 @@ def rename_files():
     return
 
 
-def get_next_backup_name(file_name):
-    name, ext = file_name.rsplit(".", 1)
-    f = open(file_name, "rb")
-    f.close()
-    gc.collect()
-    print("file open and closed")
-    count = 1
-    while True:
-        backup_name = "{}_{}.{}".format(name, count, ext)
-        print(backup_name)
-        
-        gc.collect()
-        print("Free RAM:", gc.mem_free())
-
-        try:           
-            print("Check file exiest or not : ",backup_name)
-
-            """ f = open(backup_name, "rb")
-            f.close() """
-
-            with open(backup_name, "rb") as f:
-                print("File open")
-                count += 1
-
-            gc.collect()
-            
-            # count += 1
-            print("next counter : ",count)
-           
-        except Exception as e:
-            print(" error :", e)
-            print("File not found:", backup_name)
-            return backup_name
-
-
-
 def upload_file(url, filename):
     try:
         gc.collect()
@@ -338,66 +241,14 @@ def upload_file(url, filename):
         print("Upload error:", e)
 
 
-
-def downloadFile(_conf):
-    _tg = _conf["MQTT_CLIENT_ID"]
-    _tn = _conf["THING_NAME"]
-    _file_ext = [".cert.pem", ".private.key", "-Policy"]
-    for _ext in _file_ext:
-        _fn = _tn + _ext
-        file_path = f"flash/{_fn}"
-        if not check_if_file_exists(file_path):
-            download_file(_tg, _tn, _fn)
-        else:
-            print("File Exists", file_path)
-        utime.sleep(1)
-
-
-
-
-def ota_update11(version):
-    url = "https://sigmaweld-ota-update.s3.us-east-1.amazonaws.com/version.json"
-    r = urequests.get(url)
-    data = ujson.loads(r.text)
-    latest_version = data["version"]
-    
-    if latest_version != version:
-        print("New update available")
-        for file in data["files"]:
-            try:
-                gc.collect()
-                print(f"Free memory before download: {gc.mem_free()} bytes")
-                _url = f"https://sigmaweld-ota-update.s3.us-east-1.amazonaws.com/{file}"
-                print(_url)
-                
-                try:
-                    _res = urequests.get(_url, timeout=20)
-                    if _res.status_code == 200:
-                        with open(file, "wb") as _file:
-                            while True:
-                                chunk = _res.raw.read(512)
-                                if not chunk:
-                                    break
-                                _file.write(chunk)
-                    _res.close()
-                except Exception as e:
-                    print(f"An error occurred while downloading {file}: {e}")
-                utime.sleep(2)
-            except Exception as e:
-                print(f"An error occurred: {e}")
-
-        print("Update complete")
-
-
-
 def ota_update(current_version):
     try:
         gc.collect()
-        print("Free RAM before OTA:", gc.mem_free())
+        # print("Free RAM before OTA:", gc.mem_free())
         version_url = "https://sigmaweld-ota-update.s3.us-east-1.amazonaws.com/version.json"
-        print("Checking OTA version...", version_url)
+        # print("Checking OTA version...", version_url)
         r = urequests.get(version_url, timeout=20)
-        print("Checking OTA version...", r.status_code)
+        print("Checking OTA version Response Status : ", r.status_code)
 
         if r.status_code != 200:
             print("Failed to fetch version file")
@@ -409,21 +260,18 @@ def ota_update(current_version):
 
         # latest_version = data["version"]
 
-        print("Current Version :", current_version)
-        print("Latest Version  :", data["version"])
+        print("Current Version :", current_version, "Latest Version  :", data["version"])
 
         if data["version"] == current_version:
             print("Device already up to date")
             return False
 
-        print("New update available")
+        # print("New update available")
         files = data["files"]
         for file in files:
             try:
                 gc.collect()
-                print("--------------------------------")
                 print("Downloading:", file)
-                print("Free RAM:", gc.mem_free())
 
                 file_url = (
                     "https://sigmaweld-ota-update.s3.us-east-1.amazonaws.com/"
@@ -450,13 +298,13 @@ def ota_update(current_version):
                     pass
 
                 uos.rename(temp_file, file)
-                print("Updated:", file)
+                print("File Download sucessfully :", file)
                 gc.collect()
                 utime.sleep_ms(500)
 
             except Exception as e:
                 print("File update failed:", file)
-                print("Error:", e)
+                # print("Error:", e)
 
         print("OTA update complete")
         return True
@@ -464,7 +312,6 @@ def ota_update(current_version):
     except Exception as e:
         print("OTA failed:", e)
         return False
-
 
 
 def ota_update_ugit():
@@ -492,5 +339,4 @@ def ota_update_ugit():
     except Exception as e:
         print("OTA failed:", e)
         return False
-
 
