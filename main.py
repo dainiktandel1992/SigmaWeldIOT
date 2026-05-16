@@ -1,6 +1,7 @@
 import gc
 import utime
 import machine
+import random
 from micropython import const
 
 # from helper_storage import DataLogger, SDManager
@@ -39,7 +40,7 @@ def log_sensor_data(interval_ms=900):
         base_dir=_log_folder,
         buffer_size=5
     ) """
-
+    
     wifi_manager = WiFiManager()
     if wifi_manager.is_connected():
         print("Wifi Connect.")
@@ -57,19 +58,36 @@ def log_sensor_data(interval_ms=900):
         print("Wifi No Found.")
         utime.sleep_ms(1000)
 
-    
-        
-    # =========================
-    # START DELAY
-    # =========================
-    # update_oled_display_statement("BLE Config Mode")
-    ble_monitor = BLEMonitor(name=_device_id)
     for i in range(10):
         print(f"Start in {10 - i}.")
         # update_oled_display_statement(f"Start in {10 - i}.")
         utime.sleep_ms(1000)
         gc.collect()
-    print("Main function initialized with device ID:", _device_id)
+    
+    #Reboot/ Reset ESP32
+    """ print("Restarting...")
+    print("Disconnect Wifi.....")
+    wifi_manager.stop()
+    utime.sleep_ms(2000)
+    gc.collect()
+    machine.reset() """
+
+    # =========================
+    # START DELAY
+    # =========================
+    # update_oled_display_statement("BLE Config Mode")
+    ble_monitor = BLEMonitor(name=_device_id)
+
+    print("Main work starting...")
+
+    while True:
+        current = random.randint(100, 1000)
+        voltage = random.randint(10, 40)
+        print(f"Arc Value Publish current : ", current, ", voltage : ",voltage)
+        ble_monitor.update(voltage, current)
+        utime.sleep(2)
+
+    
     # =========================
     # WIFI CHECK
     # =========================

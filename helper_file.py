@@ -20,6 +20,9 @@ def update_file(input_string):
         "cs=": "current_slope =",
         "co=": "current_offset =",
         "as=": "adc_samples =",
+
+        # cloud.ini
+        "mt=": "mqtt_topic =",
     }
 
     numeric_keys = [
@@ -43,13 +46,25 @@ def update_file(input_string):
         print("Invalid input pattern.")
         return
     
-     # Validate numeric values
+     # Empty / blank / null check
+    if (
+        new_value is None or
+        new_value == "" or
+        new_value.lower() == "null" or
+        new_value.lower() == "none"
+    ):
+        print("Empty value. Skip update.")
+        return
+    
+    # Validate numeric values
     if replacement_key in numeric_keys:
 
         try:
             # float only for current_offset
             if replacement_key == "current_offset =":
                 new_value = float(new_value)
+            elif replacement_key == "current_slope =":
+                new_value = int(new_value) // 10
             else:
                 new_value = int(new_value)
 
@@ -73,15 +88,16 @@ def update_file(input_string):
 
     # Decide which file to update
     if replacement_key in [
-        "min_current =",
-        "voltage_f =",
-        "current_slope =",
-        "current_offset =",
-        "adc_samples =",
+        "ssid =",
+        "psk =",
     ]:
-        file_path = "config.ini"
-    else:
         file_path = "connection.ini"
+    elif replacement_key in [
+        "mqtt_topic =",
+    ]:
+        file_path = "cloud.ini"
+    else:
+        file_path = "config.ini"
 
     try:
         with open(file_path, 'r') as file:
@@ -94,6 +110,8 @@ def update_file(input_string):
                 file.write(line)
         print(f"Successfully updated file '{file_path}'")
 
+        utime.sleep_ms(300)
+        
     except OSError as e:
         print(f"An error occurred: {e}")
 
@@ -213,13 +231,17 @@ def rename_files():
     return
 
 
-def upload_file(url, filename):
+def upload_file___(url, filename):
     try:
         gc.collect()
 
+        print("Processing file to upload : ",filename)
         with open(filename, "rb") as f:
             file_data = f.read()
 
+        print("Read file data")
+
+        utime.sleep_ms(500)
         r = urequests.put(
             url,
             data=file_data,
@@ -227,6 +249,8 @@ def upload_file(url, filename):
                 "Content-Type": "application/octet-stream"
             }
         )
+
+        print("S3 Upload file status : ", r.status_code)
 
         if r.status_code == 200 or r.status_code == 201:
             print("Upload Success")
@@ -239,6 +263,61 @@ def upload_file(url, filename):
 
     except Exception as e:
         print("Upload error:", e)
+
+
+def upload_file(url, filename):
+    r = None
+
+    try:
+        gc.collect()
+        print("Free RAM before upload:", gc.mem_free())
+
+        print("Uploading:", filename)
+
+        with open(filename, "rb") as f:
+            data = f.read()
+
+        gc.collect()
+
+        print("Data length:", len(data))
+        print("Starting upload")
+
+        # Upload with stream
+        r = urequests.put(
+            url,
+            data=data,
+            headers={
+                "Content-Type": "application/octet-stream"
+            }
+        )
+
+        print("Upload status:", r.status_code)
+
+        if r.status_code in (200, 201):
+            print("Upload Success")
+        else:
+            print("Upload Failed")
+
+        r.close()
+        f.close()
+
+    except Exception as e:
+        print("Upload error:", e)
+
+    finally:
+        try:
+            if r:
+                r.close()
+        except:
+            pass
+
+        try:
+            f.close()
+        except:
+            pass
+
+        gc.collect()
+        print("Free RAM after upload:", gc.mem_free())
 
 
 def ota_update(current_version):

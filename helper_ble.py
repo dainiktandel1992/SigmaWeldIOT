@@ -10,6 +10,11 @@ from helper_file import (
     update_file,
 )
 
+# ── AD types ──────────────────────────────────────────────────────────────────
+_AD_FLAGS        = const(0x01)
+_AD_NAME         = const(0x09)
+_AD_MANUFACTURER = const(0xFF)
+
 _FLAG_READ = const(0x0002)
 _FLAG_WRITE_NO_RESPONSE = const(0x0004)
 _FLAG_WRITE = const(0x0008)
@@ -19,18 +24,6 @@ _IRQ_CENTRAL_CONNECT    = const(1)
 _IRQ_CENTRAL_DISCONNECT = const(2)
 _IRQ_GATTS_WRITE        = const(3)
 
-
-
- 
-def advertising_payload(name=None, services=None):
-        payload = bytearray()
-        if name:
-            payload += bytearray((len(name) + 1, 0x09)) + name
-        if services:
-            for uuid in services:
-                b = bytes(uuid)
-                payload += bytearray((len(b) + 1, 0x06)) + b
-        return payload
 
 def generate_random_uuid(vendor_id):
     vendor_id = ubinascii.hexlify(vendor_id.encode("utf-8")).decode("utf-8")
@@ -46,11 +39,22 @@ def generate_unique_id():
     return f"{unique_id:05d}"
 
 
+def _field(ad_type, value):
+    return bytes((len(value) + 1, ad_type)) + value
+ 
+
 class BLEMonitor:
 
-    def __init__(self, name="SmartWeld"):
+    def __init__(self, name="SigmaWeld"):
         self._ble = ubluetooth.BLE()
         print("Device name",name)
+
+        self._name     = name
+        self._voltage  = 0.0
+        self._current  = 0.0
+        self._last_adv = 0          # ticks_ms of last advertise call
+        self._adv_interval_ms = 1000  # only re-advertise every 5s
+
         self._ble.active(True)
         self._ble.irq(self._irq)
         uui = generate_random_uuid("S-IT")
@@ -76,43 +80,14 @@ class BLEMonitor:
         )
         self._connections = set()
         self._write_callback = None
-        self._payload = advertising_payload(name=name, services=[self._UART_UUID])
-        self._advertising = False
+        self._advertising = True
         self._disconnet_ble = False
 
         self._initialize()
         self._advertise()
 
-        while True:
-            if not self._advertising:
-                break
-            utime.sleep(1)
-        
-        
-        # Advertise for max 30 seconds
-        """ start_time = utime.ticks_ms()
-        timeout_ms = 15000   # 30 sec
+        print("BLE advertising started")
 
-        while True:
-
-            # Device connected
-            if not self._advertising:
-                print("BLE connected")
-                break
-
-            # Timeout reached
-            if utime.ticks_diff(utime.ticks_ms(), start_time) > timeout_ms:
-                print("BLE advertise timeout")
-
-                # Stop advertising
-                self._ble.gap_advertise(None)
-
-                self._advertising = False
-                break
-
-            utime.sleep(1)
- """
-        print("Continue next process...")
 
     
     
@@ -127,10 +102,14 @@ class BLEMonitor:
         elif event == _IRQ_CENTRAL_DISCONNECT:
             conn_handle, _, _ = data
             print("Disconnected", conn_handle)
-            self._connections.remove(conn_handle)
+            if conn_handle in self._connections:
+                self._connections.remove(conn_handle)
+            
+            # self._connections.remove(conn_handle)
             self._advertising = False
-            self._ble.gap_advertise(None)
-            self._disconnet_ble = True
+            # self._ble.gap_advertise(None)
+            # self._disconnet_ble = True
+            self._advertise()
 
         elif event == _IRQ_GATTS_WRITE:
             conn_handle, value_handle = data
@@ -147,11 +126,31 @@ class BLEMonitor:
     def is_connected(self):
         return len(self._connections) > 0
 
-    def _advertise(self, interval_us=500000):    
-        if not self._advertising:
-            print("Starting advertising")
-            self._advertising = True
-            self._ble.gap_advertise(interval_us, adv_data=self._payload)
+    
+    def update(self, voltage, current):
+        """Update values and refresh advert packet at most every 5s."""
+        self._voltage = voltage
+        self._current = current
+
+        # print("Call Update function-------------------------")
+        now = utime.ticks_ms()
+        if utime.ticks_diff(now, self._last_adv) >= self._adv_interval_ms:
+            # print("Call advertise function")
+            self._advertise()
+            self._last_adv = now
+
+    def _advertise(self):    
+        adv = (
+            _field(_AD_FLAGS, bytes((0x06,))) +
+            _field(_AD_NAME,  self._name.encode())
+        )
+
+        # Scan response: 2-byte company ID (0xFFFF = not assigned) + sensor string
+        readable = "V:{:.2f},I:{:.2f}".format(self._voltage, self._current)
+        resp = _field(_AD_MANUFACTURER, b'\xFF\xFF' + readable.encode("utf-8"))
+        # print("resp : ", resp)
+        self._ble.gap_advertise(500000, adv_data=adv, resp_data=resp)
+
 
     def on_write(self, callback):
         self._write_callback = callback
